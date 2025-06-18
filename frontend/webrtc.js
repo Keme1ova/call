@@ -5,38 +5,36 @@ let yourId, targetId;
 let localVideo = document.getElementById("localVideo");
 let remoteVideo = document.getElementById("remoteVideo");
 
-// Получение медиа и добавление в peer connection
+// Запрашиваем доступ к камере и микрофону
 navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
   stream.getTracks().forEach(track => pc.addTrack(track, stream));
   localVideo.srcObject = stream;
+}).catch(error => {
+  console.error("Ошибка доступа к камере/микрофону:", error);
 });
 
-// Получение медиапотока от собеседника
-pc.ontrack = (event) => {
+// При получении потока от удалённого абонента
+pc.ontrack = event => {
   remoteVideo.srcObject = event.streams[0];
 };
 
-// ICE кандидаты
+// ICE-кандидаты отправляются через WebSocket
 pc.onicecandidate = event => {
   if (event.candidate) {
     sendMessage({ type: "ice", candidate: event.candidate });
   }
 };
 
-// Отправка сообщения через WebSocket с проверками
+// Функция отправки сообщений через WebSocket
 function sendMessage(message) {
-  if (!ws) {
-    console.error("WebSocket не создан");
-    return;
-  }
-  if (ws.readyState !== WebSocket.OPEN) {
-    console.error("WebSocket не открыт. readyState =", ws.readyState);
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error("WebSocket не готов. readyState:", ws?.readyState);
     return;
   }
   ws.send(JSON.stringify({ to: targetId, data: message }));
 }
 
-// Старт соединения WebSocket
+// Подключение к WebSocket и инициализация соединения
 function start() {
   const idInput = document.getElementById("yourId");
   if (!idInput.value) {
@@ -48,11 +46,17 @@ function start() {
 
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const wsUrl = `${protocol}://${location.host}/ws/${yourId}`;
-  ws = new WebSocket(wsUrl);
+
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (err) {
+    console.error("Ошибка создания WebSocket:", err);
+    return;
+  }
 
   ws.onopen = () => {
-    console.log("WebSocket соединение установлено");
-    document.getElementById("callButton").disabled = false; // включаем кнопку звонка
+    console.log("WebSocket подключён");
+    document.getElementById("callButton")?.removeAttribute("disabled");
   };
 
   ws.onmessage = async ({ data }) => {
@@ -70,8 +74,8 @@ function start() {
     }
   };
 
-  ws.onerror = (err) => {
-    console.error("Ошибка WebSocket:", err);
+  ws.onerror = err => {
+    console.error("WebSocket ошибка:", err);
   };
 
   ws.onclose = () => {
@@ -79,10 +83,10 @@ function start() {
   };
 }
 
-// Начало вызова
+// Начало звонка (отправка offer)
 async function call() {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
-    console.error("Нельзя начать звонок — WebSocket не подключён");
+    console.error("WebSocket не подключён. Невозможно позвонить.");
     return;
   }
 
@@ -90,3 +94,7 @@ async function call() {
   await pc.setLocalDescription(offer);
   sendMessage(offer);
 }
+
+// Делаем функции доступными в глобальном контексте (для HTML onclick)
+window.start = start;
+window.call = call;
