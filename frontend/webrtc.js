@@ -1,4 +1,3 @@
-
 let pc = new RTCPeerConnection();
 let ws;
 let yourId, targetId;
@@ -22,13 +21,25 @@ pc.onicecandidate = event => {
 };
 
 function sendMessage(message) {
-  ws.send(JSON.stringify({ to: targetId, data: message }));
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ to: targetId, data: message }));
+  } else {
+    console.error("WebSocket не подключён или ещё не открыт");
+  }
 }
 
 function start() {
-  yourId = document.getElementById("yourId").value;
+  // Автоматическая генерация ID, если не введено
+  const idInput = document.getElementById("yourId");
+  if (!idInput.value) {
+    idInput.value = Math.random().toString(36).substr(2, 8);
+  }
+
+  yourId = idInput.value;
   targetId = document.getElementById("targetId").value;
-  ws = new WebSocket(`ws://${location.host}/ws/${yourId}`);
+
+  const protocol = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${protocol}://${location.host}/ws/${yourId}`);
 
   ws.onmessage = async ({ data }) => {
     let msg = JSON.parse(data).data;
