@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WebRTC звонок</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>WebRTC Звонилка</h1>
+    <div class="form">
+      <input id="yourId" placeholder="Ваш ID" />
+      <input id="targetId" placeholder="ID абонента" />
+      <button onclick="start()">Присоединиться</button>
+      <button onclick="call()">Позвонить</button>
+    </div>
+    <div class="videos">
+      <video id="localVideo" autoplay muted playsinline></video>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+  </div>
+  <script src="webrtc.js"></script>
+</body>
+</html>
